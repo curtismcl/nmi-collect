@@ -102,7 +102,7 @@
     Enter Card Details
   </button>
 
-  <div id="status-bar" class="idle">Click above to securely enter card details.</div>
+  <div id="status-bar" class="idle"></div>
 
   <div id="token-badge">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -150,7 +150,7 @@
           <line x1="1" y1="10" x2="23" y2="10"/>
         </svg>
         Enter Card Details`;
-      setStatus('Click above to securely enter card details.', 'idle');
+      setStatus('', 'idle');
       pushToRetool();
     }
 
@@ -193,7 +193,7 @@ window.addEventListener('load', function() {
       setTimeout(() => {
         if (!currentToken) {
           btn.disabled = false;
-          setStatus('Click above to securely enter card details.', 'idle');
+          setStatus('', 'idle');
         }
       }, 3000);
     });
