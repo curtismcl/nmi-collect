@@ -177,7 +177,12 @@
         pushToRetool();
       },
     });
-
+    // Auto-launch when iframe loads
+window.addEventListener('load', function() {
+  setTimeout(() => {
+    CollectJS.startPaymentRequest();
+  }, 500);
+});
     // Launch lightbox on button click
     btn.addEventListener('click', function() {
       btn.disabled = true;
