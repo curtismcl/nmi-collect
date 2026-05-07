@@ -14,41 +14,11 @@
       color: #111827;
     }
 
-    #launch-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 10px 16px;
-      background: #4f46e5;
-      color: #fff;
-      font-size: 14px;
-      font-weight: 600;
-      border: none;
-      border-radius: 7px;
-      cursor: pointer;
-      transition: background 0.15s ease, transform 0.1s ease;
-    }
-    #launch-btn:hover  { background: #4338ca; }
-    #launch-btn:active { transform: scale(0.98); }
-    #launch-btn:disabled {
-      background: #a5b4fc;
-      cursor: not-allowed;
-    }
-#launch-btn { display: none !important; }
-    #status-bar {
-      margin-top: 10px;
-      min-height: 18px;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    #status-bar.idle    { color: #9ca3af; }
-    #status-bar.working { color: #4f46e5; }
-    #status-bar.success { color: #059669; }
-    #status-bar.error   { color: #dc2626; }
+    /* Button is hidden — lightbox fires automatically on load */
+    #launch-btn { display: none !important; }
+
+    /* Hide status bar text */
+    #status-bar { display: none; }
 
     #token-badge {
       display: none;
@@ -73,15 +43,27 @@
       border-radius: 4px;
     }
 
-    .spinner {
-      display: inline-block;
-      width: 11px; height: 11px;
-      border: 2px solid #c7d2fe;
-      border-top-color: #4f46e5;
-      border-radius: 50%;
-      animation: spin 0.65s linear infinite;
+    /* ── NMI Lightbox overrides ────────────────────────────────────────────── */
+
+    /* Remove border and shadow from the lightbox modal */
+    .CollectJSLightbox,
+    .CollectJSLightbox * {
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Push lightbox toward the top of the viewport */
+    .CollectJSLightbox {
+      top: 40px !important;
+      transform: none !important;
+      margin-top: 0 !important;
+    }
+
+    /* Disable clicks on the overlay so it can't be dismissed */
+    .CollectJSOverlay {
+      pointer-events: none !important;
+    }
   </style>
 
   <script
@@ -94,13 +76,7 @@
 
 <body>
 
-  <button id="launch-btn">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <rect x="1" y="4" width="22" height="16" rx="2"/>
-      <line x1="1" y1="10" x2="23" y2="10"/>
-    </svg>
-    Enter Card Details
-  </button>
+  <button id="launch-btn">Enter Card Details</button>
 
   <div id="status-bar" class="idle"></div>
 
@@ -114,20 +90,12 @@
 
   <script>
     const btn         = document.getElementById('launch-btn');
-    const statusBar   = document.getElementById('status-bar');
     const tokenBadge  = document.getElementById('token-badge');
     const cardSummary = document.getElementById('card-summary');
 
     let currentToken = null;
     let cardType     = '';
     let last4        = '';
-
-    function setStatus(msg, type, showSpinner = false) {
-      statusBar.className = type;
-      statusBar.innerHTML = showSpinner
-        ? `<span class="spinner"></span> ${msg}`
-        : msg;
-    }
 
     function pushToRetool(extra = {}) {
       window.parent.postMessage({
@@ -143,20 +111,27 @@
     function resetUI() {
       currentToken = null; cardType = ''; last4 = '';
       tokenBadge.classList.remove('visible');
-      btn.disabled = false;
-      btn.innerHTML = `
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <rect x="1" y="4" width="22" height="16" rx="2"/>
-          <line x1="1" y1="10" x2="23" y2="10"/>
-        </svg>
-        Enter Card Details`;
-      setStatus('', 'idle');
       pushToRetool();
+      // Re-launch lightbox on reset
+      setTimeout(() => CollectJS.startPaymentRequest(), 300);
     }
 
-    // Configure lightbox callback
     CollectJS.configure({
       variant: 'lightbox',
+
+      // Fires once NMI's fields are ready — use to block overlay dismissal
+      fieldsAvailableCallback: function() {
+        // Belt-and-suspenders: remove pointer events from overlay in the DOM
+        const tryBlock = () => {
+          const overlay = document.querySelector('.CollectJSOverlay');
+          if (overlay) {
+            overlay.style.pointerEvents = 'none';
+          } else {
+            setTimeout(tryBlock, 100);
+          }
+        };
+        tryBlock();
+      },
 
       callback: function(response) {
         currentToken = response.token;
@@ -166,39 +141,16 @@
         tokenBadge.classList.add('visible');
         cardSummary.textContent = [cardType, last4 ? `····${last4}` : ''].filter(Boolean).join(' ');
 
-        btn.innerHTML = `
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M20 6L9 17l-5-5"/>
-          </svg>
-          Card Entered — Click to Change`;
-        btn.disabled = false;
-
-        setStatus('', 'idle');
         pushToRetool();
       },
     });
-    // Auto-launch when iframe loads
-window.addEventListener('load', function() {
-  setTimeout(() => {
-    CollectJS.startPaymentRequest();
-  }, 500);
-});
-    // Launch lightbox on button click
-    btn.addEventListener('click', function() {
-      btn.disabled = true;
-      setStatus('Opening secure card entry…', 'working', true);
-      CollectJS.startPaymentRequest();
 
-      // Re-enable if user closes lightbox without submitting
-      setTimeout(() => {
-        if (!currentToken) {
-          btn.disabled = false;
-          setStatus('', 'idle');
-        }
-      }, 3000);
+    // Auto-launch lightbox on page load
+    window.addEventListener('load', function() {
+      setTimeout(() => CollectJS.startPaymentRequest(), 500);
     });
 
-    // Listen for reset command from Retool
+    // Listen for commands from Retool
     window.addEventListener('message', function(event) {
       const data = event.data;
       if (!data || data.type !== 'NMI_COMMAND') return;
