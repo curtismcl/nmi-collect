@@ -7,22 +7,62 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: transparent;
-      padding: 8px 0;
       color: #111827;
     }
 
-    /* Button is hidden — lightbox fires automatically on load */
-    #launch-btn { display: none !important; }
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 4px 0;
+    }
 
-    /* Hide status bar text */
-    #status-bar { display: none; }
+    .field-group { display: flex; flex-direction: column; gap: 5px; }
+
+    .field-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #6b7280;
+    }
+
+    /* NMI injects its iframe into these divs */
+    .collect-field {
+      width: 100%;
+      height: 42px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 7px;
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      overflow: hidden;
+    }
+    .collect-field.focused {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+    }
+    .collect-field.valid   { border-color: #10b981; }
+    .collect-field.invalid {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239,68,68,0.10);
+    }
+
+    .row { display: flex; gap: 10px; }
+    .row .field-group { flex: 1; }
+
+    #error-msg {
+      font-size: 12px;
+      color: #dc2626;
+      min-height: 16px;
+    }
 
     #token-badge {
       display: none;
-      margin-top: 10px;
       padding: 8px 12px;
       background: #f0fdf4;
       border: 1.5px solid #bbf7d0;
@@ -35,102 +75,127 @@
     #token-badge.visible { display: flex; }
     #card-summary {
       margin-left: auto;
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-family: monospace;
       font-size: 11px;
       color: #15803d;
       background: #dcfce7;
       padding: 1px 6px;
       border-radius: 4px;
     }
-
-    /* ── NMI Lightbox overrides ────────────────────────────────────────────── */
-
-    /* Remove border and shadow from the lightbox modal */
-    .CollectJSLightbox,
-    .CollectJSLightbox * {
-      border: none !important;
-      box-shadow: none !important;
-      outline: none !important;
-    }
-
-    /* Push lightbox toward the top of the viewport */
-    .CollectJSLightbox {
-      top: 40px !important;
-      transform: none !important;
-      margin-top: 0 !important;
-    }
-
-    /* Disable clicks on the overlay so it can't be dismissed */
-    .CollectJSOverlay {
-      pointer-events: none !important;
-    }
   </style>
 
   <script
     src="https://secure.nmi.com/token/Collect.js"
     data-tokenization-key="Sj6YaN-t3we7m-MDpj8R-8F9GgV"
-    data-variant="lightbox"
-    data-price=""
-  ></script>
+    data-variant="inline">
+  </script>
 </head>
 
 <body>
+  <div class="wrap">
 
-  <button id="launch-btn">Enter Card Details</button>
+    <div class="field-group">
+      <div class="field-label">Card Number</div>
+      <div id="ccnumber" class="collect-field"></div>
+    </div>
 
-  <div id="status-bar" class="idle"></div>
+    <div class="row">
+      <div class="field-group">
+        <div class="field-label">Expiration</div>
+        <div id="ccexp" class="collect-field"></div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">CVV</div>
+        <div id="cvv" class="collect-field"></div>
+      </div>
+    </div>
 
-  <div id="token-badge">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path d="M20 6L9 17l-5-5"/>
-    </svg>
-    Card secured — ready to save
-    <span id="card-summary"></span>
+    <div id="error-msg"></div>
+
+    <div id="token-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M20 6L9 17l-5-5"/>
+      </svg>
+      Card secured — ready to save
+      <span id="card-summary"></span>
+    </div>
+
   </div>
 
   <script>
-    const btn         = document.getElementById('launch-btn');
-    const tokenBadge  = document.getElementById('token-badge');
+    const errorMsg   = document.getElementById('error-msg');
+    const tokenBadge = document.getElementById('token-badge');
     const cardSummary = document.getElementById('card-summary');
 
     let currentToken = null;
     let cardType     = '';
     let last4        = '';
+    const fieldState = { ccnumber: 'empty', ccexp: 'empty', cvv: 'empty' };
 
     function pushToRetool(extra = {}) {
       window.parent.postMessage({
-        type:         'NMI_UPDATE',
-        paymentToken: currentToken,
-        tokenReady:   !!currentToken,
-        cardType:     cardType,
-        last4:        last4,
+        type:          'NMI_UPDATE',
+        paymentToken:  currentToken,
+        tokenReady:    !!currentToken,
+        cardType:      cardType,
+        last4:         last4,
+        allFieldsValid: Object.values(fieldState).every(v => v === 'valid'),
         ...extra,
       }, '*');
     }
 
+    function fieldEl(id) { return document.getElementById(id); }
+
     function resetUI() {
       currentToken = null; cardType = ''; last4 = '';
+      Object.keys(fieldState).forEach(k => fieldState[k] = 'empty');
+      ['ccnumber','ccexp','cvv'].forEach(id => {
+        const el = fieldEl(id);
+        if (el) el.className = 'collect-field';
+      });
       tokenBadge.classList.remove('visible');
+      errorMsg.textContent = '';
       pushToRetool();
-      // Re-launch lightbox on reset
-      setTimeout(() => CollectJS.startPaymentRequest(), 300);
     }
 
     CollectJS.configure({
-      variant: 'lightbox',
+      variant: 'inline',
+      styleSniffer: false,
 
-      // Fires once NMI's fields are ready — use to block overlay dismissal
-      fieldsAvailableCallback: function() {
-        // Belt-and-suspenders: remove pointer events from overlay in the DOM
-        const tryBlock = () => {
-          const overlay = document.querySelector('.CollectJSOverlay');
-          if (overlay) {
-            overlay.style.pointerEvents = 'none';
-          } else {
-            setTimeout(tryBlock, 100);
-          }
-        };
-        tryBlock();
+      fields: {
+        ccnumber: { selector: '#ccnumber', placeholder: '•••• •••• •••• ••••' },
+        ccexp:    { selector: '#ccexp',    placeholder: 'MM / YY' },
+        cvv:      { selector: '#cvv',      placeholder: 'CVV' },
+      },
+
+      focusEvent: function(field) {
+        const el = fieldEl(field);
+        if (el) { el.classList.add('focused'); el.classList.remove('invalid'); }
+      },
+      blurEvent: function(field) {
+        const el = fieldEl(field);
+        if (el) el.classList.remove('focused');
+      },
+
+      validationCallback: function(field, valid, message) {
+        fieldState[field] = valid ? 'valid' : 'invalid';
+        const el = fieldEl(field);
+        if (el) {
+          el.classList.remove('focused', 'valid', 'invalid');
+          el.classList.add(valid ? 'valid' : 'invalid');
+        }
+        if (currentToken) {
+          currentToken = null;
+          tokenBadge.classList.remove('visible');
+        }
+        errorMsg.textContent = (!valid && message) ? message : '';
+        pushToRetool();
+      },
+
+      timeoutDuration: 12000,
+      timeoutCallback: function() {
+        errorMsg.textContent = 'Tokenization timed out — please try again.';
+        pushToRetool({ tokenReady: false });
       },
 
       callback: function(response) {
@@ -140,20 +205,25 @@
 
         tokenBadge.classList.add('visible');
         cardSummary.textContent = [cardType, last4 ? `····${last4}` : ''].filter(Boolean).join(' ');
+        errorMsg.textContent = '';
 
         pushToRetool();
       },
-    });
-
-    // Auto-launch lightbox on page load
-    window.addEventListener('load', function() {
-      setTimeout(() => CollectJS.startPaymentRequest(), 500);
     });
 
     // Listen for commands from Retool
     window.addEventListener('message', function(event) {
       const data = event.data;
       if (!data || data.type !== 'NMI_COMMAND') return;
+      if (data.action === 'triggerToken') {
+        const allGood = Object.values(fieldState).every(v => v === 'valid');
+        if (!allGood) {
+          errorMsg.textContent = 'Please complete all card fields.';
+          return;
+        }
+        errorMsg.textContent = '';
+        CollectJS.startPaymentRequest();
+      }
       if (data.action === 'reset') resetUI();
     });
   </script>
