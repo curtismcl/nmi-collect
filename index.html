@@ -138,12 +138,14 @@
 
       // Hide the X close button inside the iframe if accessible
       try {
-        const closeBtn = iframe?.contentDocument?.querySelector('[class*="close"], [class*="Close"], button[onclick*="close"]');
-        if (closeBtn) closeBtn.style.display = 'none';
-      } catch(e) {
-        // Cross-origin iframe — can't access internals, expected
-      }
-    }
+  const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+  if (iframeDoc) {
+    const xContainer = iframeDoc.querySelector('.x-container');
+    if (xContainer) xContainer.style.display = 'none';
+  }
+} catch(e) {
+  // Cross-origin restriction
+}
 
     // Use a MutationObserver to watch for NMI injecting its elements
     const observer = new MutationObserver(function() {
