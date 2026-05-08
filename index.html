@@ -136,22 +136,14 @@
         iframe.style.transition = 'none';
       }
 
-    // Inject style into iframe to hide close button
-try {
-  const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
-  if (iframeDoc) {
-    const style = iframeDoc.createElement('style');
-    style.textContent = `
-      [class*="close"], [class*="Close"],
-      [id*="close"], [id*="Close"],
-      button[class*="x"], .collectjs-close,
-      a[href*="close"] { display: none !important; }
-    `;
-    iframeDoc.head.appendChild(style);
-  }
-} catch(e) {
-  // Cross-origin — NMI controls this iframe, we can't reach inside it
-}
+      // Hide the X close button inside the iframe if accessible
+      try {
+        const closeBtn = iframe?.contentDocument?.querySelector('[class*="close"], [class*="Close"], button[onclick*="close"]');
+        if (closeBtn) closeBtn.style.display = 'none';
+      } catch(e) {
+        // Cross-origin iframe — can't access internals, expected
+      }
+    }
 
     // Use a MutationObserver to watch for NMI injecting its elements
     const observer = new MutationObserver(function() {
