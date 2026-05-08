@@ -42,29 +42,36 @@
 
     /* ── NMI Lightbox overrides ─────────────────────────────────────────────── */
 
-    /* Grey overlay — disable clicks so user can't dismiss by clicking outside */
     .CollectJSFade {
       pointer-events: none !important;
-      /* Remove fade-in animation */
       transition: none !important;
     }
 
-    /* The lightbox iframe container */
     #CollectJSIframe {
-      /* Remove border */
       border: none !important;
       box-shadow: none !important;
-      /* Push toward top */
       top: 20px !important;
-      /* Maximize width */
       width: 95vw !important;
       max-width: 600px !important;
+      animation: none !important;
+      transition: none !important;
     }
 
-    /* Remove bounce-in animation */
     .CollectJSBounceIn {
       animation: none !important;
       transition: none !important;
+    }
+
+    /* White cover to hide NMI's X close button */
+    #nmi-x-cover {
+      position: fixed;
+      display: none;
+      background: white;
+      z-index: 10000;
+      border-radius: 50%;
+    }
+    #nmi-x-cover.visible {
+      display: block;
     }
   </style>
 
@@ -89,9 +96,12 @@
     <span id="card-summary"></span>
   </div>
 
+  <div id="nmi-x-cover"></div>
+
   <script>
     const tokenBadge  = document.getElementById('token-badge');
     const cardSummary = document.getElementById('card-summary');
+    const xCover      = document.getElementById('nmi-x-cover');
 
     let currentToken = null;
     let cardType     = '';
@@ -111,11 +121,27 @@
     function resetUI() {
       currentToken = null; cardType = ''; last4 = '';
       tokenBadge.classList.remove('visible');
+      xCover.classList.remove('visible');
       pushToRetool();
       setTimeout(() => CollectJS.startPaymentRequest(), 300);
     }
 
-    // Poll for NMI elements and apply overrides once they appear
+    // Retry loop — keeps trying until iframe is rendered and measured
+    function positionXCover() {
+      const iframe = document.getElementById('CollectJSIframe');
+      if (!iframe) { setTimeout(positionXCover, 100); return; }
+
+      const rect = iframe.getBoundingClientRect();
+      if (rect.width === 0) { setTimeout(positionXCover, 100); return; }
+
+      // X button is in the top-right corner of the iframe
+      xCover.style.top    = (rect.top + 6) + 'px';
+      xCover.style.left   = (rect.right - 44) + 'px';
+      xCover.style.width  = '40px';
+      xCover.style.height = '40px';
+      xCover.classList.add('visible');
+    }
+
     function applyOverrides() {
       // Block overlay clicks
       const fade = document.querySelector('.CollectJSFade');
@@ -124,30 +150,21 @@
         fade.style.transition = 'none';
       }
 
-      // Remove border and animation from iframe
+      // Style the iframe
       const iframe = document.getElementById('CollectJSIframe');
       if (iframe) {
-        iframe.style.border = 'none';
-        iframe.style.boxShadow = 'none';
-        iframe.style.top = '20px';
-        iframe.style.width = '95vw';
-        iframe.style.maxWidth = '600px';
-        iframe.style.animation = 'none';
+        iframe.style.border     = 'none';
+        iframe.style.boxShadow  = 'none';
+        iframe.style.top        = '20px';
+        iframe.style.animation  = 'none';
         iframe.style.transition = 'none';
       }
 
-      // Hide the X close button inside the iframe if accessible
-      try {
-  const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
-  if (iframeDoc) {
-    const xContainer = iframeDoc.querySelector('.x-container');
-    if (xContainer) xContainer.style.display = 'none';
-  }
-} catch(e) {
-  // Cross-origin restriction
-}
+      // Start retry loop for X cover positioning
+      positionXCover();
+    }
 
-    // Use a MutationObserver to watch for NMI injecting its elements
+    // Watch for NMI injecting elements into the DOM
     const observer = new MutationObserver(function() {
       applyOverrides();
     });
@@ -157,8 +174,7 @@
       variant: 'lightbox',
 
       fieldsAvailableCallback: function() {
-        // Also apply when fields are ready
-        applyOverrides();
+        setTimeout(applyOverrides, 200);
       },
 
       callback: function(response) {
@@ -166,6 +182,7 @@
         cardType     = response.card?.type   || '';
         last4        = response.card?.number || '';
 
+        xCover.classList.remove('visible');
         tokenBadge.classList.add('visible');
         cardSummary.textContent = [cardType, last4 ? `····${last4}` : ''].filter(Boolean).join(' ');
 
