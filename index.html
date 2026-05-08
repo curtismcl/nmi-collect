@@ -39,6 +39,33 @@
       padding: 1px 6px;
       border-radius: 4px;
     }
+
+    /* ── NMI Lightbox overrides ─────────────────────────────────────────────── */
+
+    /* Grey overlay — disable clicks so user can't dismiss by clicking outside */
+    .CollectJSFade {
+      pointer-events: none !important;
+      /* Remove fade-in animation */
+      transition: none !important;
+    }
+
+    /* The lightbox iframe container */
+    #CollectJSIframe {
+      /* Remove border */
+      border: none !important;
+      box-shadow: none !important;
+      /* Push toward top */
+      top: 20px !important;
+      /* Maximize width */
+      width: 95vw !important;
+      max-width: 600px !important;
+    }
+
+    /* Remove bounce-in animation */
+    .CollectJSBounceIn {
+      animation: none !important;
+      transition: none !important;
+    }
   </style>
 
   <script
@@ -88,19 +115,56 @@
       setTimeout(() => CollectJS.startPaymentRequest(), 300);
     }
 
+    // Poll for NMI elements and apply overrides once they appear
+    function applyOverrides() {
+      // Block overlay clicks
+      const fade = document.querySelector('.CollectJSFade');
+      if (fade) {
+        fade.style.pointerEvents = 'none';
+        fade.style.transition = 'none';
+      }
+
+      // Remove border and animation from iframe
+      const iframe = document.getElementById('CollectJSIframe');
+      if (iframe) {
+        iframe.style.border = 'none';
+        iframe.style.boxShadow = 'none';
+        iframe.style.top = '20px';
+        iframe.style.width = '95vw';
+        iframe.style.maxWidth = '600px';
+        iframe.style.animation = 'none';
+        iframe.style.transition = 'none';
+      }
+
+    // Inject style into iframe to hide close button
+try {
+  const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+  if (iframeDoc) {
+    const style = iframeDoc.createElement('style');
+    style.textContent = `
+      [class*="close"], [class*="Close"],
+      [id*="close"], [id*="Close"],
+      button[class*="x"], .collectjs-close,
+      a[href*="close"] { display: none !important; }
+    `;
+    iframeDoc.head.appendChild(style);
+  }
+} catch(e) {
+  // Cross-origin — NMI controls this iframe, we can't reach inside it
+}
+
+    // Use a MutationObserver to watch for NMI injecting its elements
+    const observer = new MutationObserver(function() {
+      applyOverrides();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
     CollectJS.configure({
       variant: 'lightbox',
 
       fieldsAvailableCallback: function() {
-        const tryBlock = () => {
-          const overlay = document.querySelector('.CollectJSOverlay');
-          if (overlay) {
-            overlay.style.pointerEvents = 'none';
-          } else {
-            setTimeout(tryBlock, 100);
-          }
-        };
-        tryBlock();
+        // Also apply when fields are ready
+        applyOverrides();
       },
 
       callback: function(response) {
