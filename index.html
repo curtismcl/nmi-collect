@@ -177,17 +177,24 @@ xCover.style.left   = (rect.left + 432) + 'px';
         setTimeout(applyOverrides, 200);
       },
 
-      callback: function(response) {
-        currentToken = response.token;
-        cardType     = response.card?.type   || '';
-        last4        = response.card?.number || '';
+    callback: function(response) {
+  currentToken = response.token;
+  cardType     = response.card?.type   || '';
+  last4        = response.card?.number || '';
 
-        xCover.classList.remove('visible');
-        tokenBadge.classList.add('visible');
-        cardSummary.textContent = [cardType, last4 ? `····${last4}` : ''].filter(Boolean).join(' ');
+  xCover.classList.remove('visible');
+  tokenBadge.classList.add('visible');
+  cardSummary.textContent = [cardType, last4 ? `····${last4}` : ''].filter(Boolean).join(' ');
 
-        pushToRetool();
-      },
+  // Update URL so Retool can read token from iframe src
+  const params = new URLSearchParams({
+    token:    currentToken,
+    cardType: cardType,
+    last4:    last4,
+    ready:    'true'
+  });
+  window.location.href = '?' + params.toString();
+},
     });
 
     // Auto-launch lightbox on page load
