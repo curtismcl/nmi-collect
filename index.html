@@ -122,15 +122,14 @@
               'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              fields: {
-                'Token':         token,
-                'Card Brand':    brand,
-                'Last4':         last4digits,
-                'Resident Name': '',
-                'Used':          false
-              }
-            })
+      body: JSON.stringify({
+  fields: {
+    'Token':         token,
+    'Card Brand':    brand,
+    'Last4':         last4digits,
+    'Resident Name': ''
+  }
+})
           }
         );
         const data = await response.json();
