@@ -29,6 +29,11 @@
     const AIRTABLE_BASE  = 'applW81Cc4MFZVSHu';
     const AIRTABLE_TABLE = 'tbloUPCH3FsPApg2S';
 
+    // Read resident info from URL params passed by Retool
+    const urlParams    = new URLSearchParams(window.location.search);
+    const residentId   = urlParams.get('residentId')   || '';
+    const residentName = urlParams.get('residentName') || '';
+
     async function saveTokenToAirtable(token, brand, last4) {
       try {
         const response = await fetch(
@@ -41,9 +46,11 @@
             },
             body: JSON.stringify({
               fields: {
-                'Token':      token,
-                'Card Brand': brand,
-                'Last4':      last4
+                'Token':         token,
+                'Card Brand':    brand,
+                'Last4':         last4,
+                'Resident Name': residentName,
+                'Resident ID':   residentId
               }
             })
           }
@@ -57,34 +64,6 @@
     }
 
     // X cover
-    function positionXCover() {
-      const iframe = document.getElementById('CollectJSIframe');
-      if (!iframe) { setTimeout(positionXCover, 100); return; }
-      const rect = iframe.getBoundingClientRect();
-      if (rect.width === 0) { setTimeout(positionXCover, 100); return; }
-      const cover = document.getElementById('nmi-x-cover');
-      if (cover) {
-        cover.style.top     = (rect.top + 4) + 'px';
-        cover.style.left    = (rect.left + rect.width - 40) + 'px';
-        cover.style.display = 'block';
-      }
-    }
-
-    function applyOverrides() {
-      const fade = document.querySelector('.CollectJSFade');
-      if (fade) { fade.style.pointerEvents = 'none'; fade.style.transition = 'none'; }
-      const iframe = document.getElementById('CollectJSIframe');
-      if (iframe) {
-        iframe.style.border = 'none';
-        iframe.style.boxShadow = 'none';
-        iframe.style.top = '20px';
-        iframe.style.animation = 'none';
-        iframe.style.transition = 'none';
-      }
-      positionXCover();
-    }
-
-    // Create X cover div
     const xCover = document.createElement('div');
     xCover.id = 'nmi-x-cover';
     Object.assign(xCover.style, {
@@ -92,6 +71,30 @@
       zIndex: '10000', borderRadius: '50%', width: '40px', height: '40px'
     });
     document.body.appendChild(xCover);
+
+    function positionXCover() {
+      const iframe = document.getElementById('CollectJSIframe');
+      if (!iframe) { setTimeout(positionXCover, 100); return; }
+      const rect = iframe.getBoundingClientRect();
+      if (rect.width === 0) { setTimeout(positionXCover, 100); return; }
+      xCover.style.top     = (rect.top + 4) + 'px';
+      xCover.style.left    = (rect.left + rect.width - 40) + 'px';
+      xCover.style.display = 'block';
+    }
+
+    function applyOverrides() {
+      const fade = document.querySelector('.CollectJSFade');
+      if (fade) { fade.style.pointerEvents = 'none'; fade.style.transition = 'none'; }
+      const iframe = document.getElementById('CollectJSIframe');
+      if (iframe) {
+        iframe.style.border     = 'none';
+        iframe.style.boxShadow  = 'none';
+        iframe.style.top        = '20px';
+        iframe.style.animation  = 'none';
+        iframe.style.transition = 'none';
+      }
+      positionXCover();
+    }
 
     const observer = new MutationObserver(() => applyOverrides());
     observer.observe(document.body, { childList: true, subtree: true });
@@ -114,11 +117,11 @@
         const cardType = response.card?.type   || '';
         const last4    = (response.card?.number || '').slice(-4);
 
-        // Save to Airtable first
+        // Save to Airtable with resident info
         await saveTokenToAirtable(token, cardType, last4);
 
-        // Redirect to success page — this naturally closes the lightbox
-        window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}`;
+        // Redirect to success page
+        window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&residentId=${encodeURIComponent(residentId)}`;
       },
     });
 
