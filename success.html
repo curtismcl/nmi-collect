@@ -53,7 +53,6 @@
 </head>
 
 <body>
-
   <div id="token-badge">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M20 6L9 17l-5-5"/>
@@ -70,19 +69,18 @@
   </button>
 
   <script>
-    // Read card details from URL params
-    const params   = new URLSearchParams(window.location.search);
-    const cardType = params.get('cardType') || '';
-    const last4    = params.get('last4')    || '';
+    const params      = new URLSearchParams(window.location.search);
+    const cardType    = params.get('cardType')    || '';
+    const last4       = params.get('last4')       || '';
+    const residentId  = params.get('residentId')  || '';
 
     document.getElementById('card-summary').textContent =
       [cardType, last4 ? `····${last4}` : ''].filter(Boolean).join(' ');
 
-    // "Use a different card" goes back to index to re-validate
+    // Go back to index preserving resident context
     document.getElementById('revalidate-btn').addEventListener('click', function() {
-      window.location.href = 'index.html';
+      window.location.href = `index.html?residentId=${encodeURIComponent(residentId)}`;
     });
   </script>
-
 </body>
 </html>
