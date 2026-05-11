@@ -6,71 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: transparent;
-      padding: 8px 0;
-      color: #111827;
     }
-
     #launch-btn { display: none !important; }
-    #status-bar { display: none; }
-
-    #token-badge {
-      display: none;
-      margin-top: 10px;
-      padding: 8px 12px;
-      background: #f0fdf4;
-      border: 1.5px solid #bbf7d0;
-      border-radius: 7px;
-      font-size: 12px;
-      color: #166534;
-      align-items: center;
-      gap: 6px;
-    }
-    #token-badge.visible { display: flex; }
-    #card-summary {
-      margin-left: auto;
-      font-family: monospace;
-      font-size: 11px;
-      color: #15803d;
-      background: #dcfce7;
-      padding: 1px 6px;
-      border-radius: 4px;
-    }
-
-    /* ── NMI Lightbox overrides ─────────────────────────────────────────────── */
-    .CollectJSFade {
-      pointer-events: none !important;
-      transition: none !important;
-    }
-
-    #CollectJSIframe {
-      border: none !important;
-      box-shadow: none !important;
-      top: 20px !important;
-      width: 95vw !important;
-      max-width: 600px !important;
-      animation: none !important;
-      transition: none !important;
-    }
-
-    .CollectJSBounceIn {
-      animation: none !important;
-      transition: none !important;
-    }
-
-    #nmi-x-cover {
-      position: fixed;
-      display: none;
-      background: white;
-      z-index: 10000;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-    }
-    #nmi-x-cover.visible { display: block; }
   </style>
 
   <script
@@ -82,35 +22,14 @@
 </head>
 
 <body>
-
   <button id="launch-btn">Enter Card Details</button>
-  <div id="status-bar"></div>
-
-  <div id="token-badge">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path d="M20 6L9 17l-5-5"/>
-    </svg>
-    Card validated — ready to save
-    <span id="card-summary"></span>
-  </div>
-
-  <div id="nmi-x-cover"></div>
 
   <script>
-    const tokenBadge  = document.getElementById('token-badge');
-    const cardSummary = document.getElementById('card-summary');
-    const xCover      = document.getElementById('nmi-x-cover');
+    const AIRTABLE_TOKEN = 'patqJqhMwGnyGpH2d.4ab694ddc5355743167d0f18cdbe6a9601b18629826b2f9308ecf4aefe26e728';
+    const AIRTABLE_BASE  = 'applW81Cc4MFZVSHu';
+    const AIRTABLE_TABLE = 'tbloUPCH3FsPApg2S';
 
-    let currentToken = null;
-    let cardType     = '';
-    let last4        = '';
-
-    // ── Save token to Airtable ────────────────────────────────────────────────
-    async function saveTokenToAirtable(token, brand, last4digits) {
-      const AIRTABLE_TOKEN = 'patqJqhMwGnyGpH2d.4ab694ddc5355743167d0f18cdbe6a9601b18629826b2f9308ecf4aefe26e728';
-      const AIRTABLE_BASE  = 'applW81Cc4MFZVSHu';
-      const AIRTABLE_TABLE = 'tbloUPCH3FsPApg2S';
-
+    async function saveTokenToAirtable(token, brand, last4) {
       try {
         const response = await fetch(
           `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`,
@@ -124,70 +43,59 @@
               fields: {
                 'Token':      token,
                 'Card Brand': brand,
-                'Last4':      last4digits
+                'Last4':      last4
               }
             })
           }
         );
         const data = await response.json();
-        console.log('Token saved to Airtable:', data.id);
+        console.log('Token saved:', data.id);
         return data.id;
       } catch (err) {
-        console.error('Failed to save token to Airtable:', err);
+        console.error('Failed to save token:', err);
       }
     }
 
-    // ── Hide all NMI lightbox elements immediately ────────────────────────────
-    function closeLightbox() {
-      // Target every possible NMI element
-      const fade    = document.querySelector('.CollectJSFade');
-      const iframe  = document.getElementById('CollectJSIframe');
-      const overlay = document.querySelector('[class*="CollectJS"]');
-
-      if (fade)    { fade.style.display    = 'none'; fade.style.visibility    = 'hidden'; }
-      if (iframe)  { iframe.style.display  = 'none'; iframe.style.visibility  = 'hidden'; }
-      if (overlay) { overlay.style.display = 'none'; overlay.style.visibility = 'hidden'; }
-
-      xCover.classList.remove('visible');
-
-      // Also hide body overflow that NMI sets
-      document.body.style.overflow = '';
-    }
-
-    // ── Position X cover ──────────────────────────────────────────────────────
+    // X cover
     function positionXCover() {
       const iframe = document.getElementById('CollectJSIframe');
       if (!iframe) { setTimeout(positionXCover, 100); return; }
       const rect = iframe.getBoundingClientRect();
       if (rect.width === 0) { setTimeout(positionXCover, 100); return; }
-      xCover.style.top  = (rect.top + 4) + 'px';
-      xCover.style.left = (rect.left + 432) + 'px';
-      xCover.classList.add('visible');
+      const cover = document.getElementById('nmi-x-cover');
+      if (cover) {
+        cover.style.top     = (rect.top + 4) + 'px';
+        cover.style.left    = (rect.left + 432) + 'px';
+        cover.style.display = 'block';
+      }
     }
 
     function applyOverrides() {
       const fade = document.querySelector('.CollectJSFade');
-      if (fade) {
-        fade.style.pointerEvents = 'none';
-        fade.style.transition    = 'none';
-      }
+      if (fade) { fade.style.pointerEvents = 'none'; fade.style.transition = 'none'; }
       const iframe = document.getElementById('CollectJSIframe');
       if (iframe) {
-        iframe.style.border     = 'none';
-        iframe.style.boxShadow  = 'none';
-        iframe.style.top        = '20px';
-        iframe.style.animation  = 'none';
+        iframe.style.border = 'none';
+        iframe.style.boxShadow = 'none';
+        iframe.style.top = '20px';
+        iframe.style.animation = 'none';
         iframe.style.transition = 'none';
       }
       positionXCover();
     }
 
-    const observer = new MutationObserver(function() {
-      applyOverrides();
+    // Create X cover div
+    const xCover = document.createElement('div');
+    xCover.id = 'nmi-x-cover';
+    Object.assign(xCover.style, {
+      position: 'fixed', display: 'none', background: 'white',
+      zIndex: '10000', borderRadius: '50%', width: '40px', height: '40px'
     });
+    document.body.appendChild(xCover);
+
+    const observer = new MutationObserver(() => applyOverrides());
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // ── CollectJS ─────────────────────────────────────────────────────────────
     CollectJS.configure({
       variant:    'lightbox',
       buttonText: 'Validate Card',
@@ -198,48 +106,25 @@
 
       timeoutDuration: 12000,
       timeoutCallback: function() {
-        console.warn('Collect.js tokenization timed out');
+        console.warn('Tokenization timed out');
       },
 
-      // ✅ Only fires on SUCCESS
       callback: async function(response) {
-        // ── Hide lightbox IMMEDIATELY before anything else ──
-        closeLightbox();
+        const token    = response.token;
+        const cardType = response.card?.type   || '';
+        const last4    = (response.card?.number || '').slice(-4);
 
-        currentToken = response.token;
-        cardType     = response.card?.type   || '';
-        last4        = response.card?.number || '';
+        // Save to Airtable first
+        await saveTokenToAirtable(token, cardType, last4);
 
-        // Show success badge
-        tokenBadge.classList.add('visible');
-        cardSummary.textContent = [
-          cardType,
-          last4 ? `····${last4.slice(-4)}` : ''
-        ].filter(Boolean).join(' ');
-
-        // Save token to Airtable
-        await saveTokenToAirtable(currentToken, cardType, last4.slice(-4));
+        // Redirect to success page — this naturally closes the lightbox
+        window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}`;
       },
     });
 
-    // Auto-launch on page load
     window.addEventListener('load', function() {
       setTimeout(() => CollectJS.startPaymentRequest(), 500);
     });
-
-    // Listen for reset from Retool
-    window.addEventListener('message', function(event) {
-      const data = event.data;
-      if (!data || data.type !== 'NMI_COMMAND') return;
-      if (data.action === 'reset') {
-        currentToken = null; cardType = ''; last4 = '';
-        tokenBadge.classList.remove('visible');
-        xCover.classList.remove('visible');
-        cardSummary.textContent = '';
-        setTimeout(() => CollectJS.startPaymentRequest(), 300);
-      }
-    });
   </script>
-
 </body>
 </html>
