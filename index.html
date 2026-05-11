@@ -61,7 +61,6 @@
       transition: none !important;
     }
 
-    /* White cover to hide NMI's X close button */
     #nmi-x-cover {
       position: fixed;
       display: none;
@@ -106,7 +105,7 @@
     let cardType     = '';
     let last4        = '';
 
-    // ── Push state to Retool via Airtable ─────────────────────────────────────
+    // ── Save token to Airtable ────────────────────────────────────────────────
     async function saveTokenToAirtable(token, brand, last4digits) {
       const AIRTABLE_TOKEN = 'patqJqhMwGnyGpH2d.4ab694ddc5355743167d0f18cdbe6a9601b18629826b2f9308ecf4aefe26e728';
       const AIRTABLE_BASE  = 'applW81Cc4MFZVSHu';
@@ -138,16 +137,22 @@
       }
     }
 
-    // ── Close the lightbox ────────────────────────────────────────────────────
-function closeLightbox() {
-  const fade   = document.querySelector('.CollectJSFade');
-  const iframe = document.getElementById('CollectJSIframe');
-  if (fade)   fade.style.display   = 'none';
-  if (iframe) iframe.style.display = 'none';
-  xCover.classList.remove('visible');
-  // Reload the page to fully clear the lightbox state
-  setTimeout(() => window.location.reload(), 1500);
-}
+    // ── Hide all NMI lightbox elements immediately ────────────────────────────
+    function closeLightbox() {
+      // Target every possible NMI element
+      const fade    = document.querySelector('.CollectJSFade');
+      const iframe  = document.getElementById('CollectJSIframe');
+      const overlay = document.querySelector('[class*="CollectJS"]');
+
+      if (fade)    { fade.style.display    = 'none'; fade.style.visibility    = 'hidden'; }
+      if (iframe)  { iframe.style.display  = 'none'; iframe.style.visibility  = 'hidden'; }
+      if (overlay) { overlay.style.display = 'none'; overlay.style.visibility = 'hidden'; }
+
+      xCover.classList.remove('visible');
+
+      // Also hide body overflow that NMI sets
+      document.body.style.overflow = '';
+    }
 
     // ── Position X cover ──────────────────────────────────────────────────────
     function positionXCover() {
@@ -177,7 +182,6 @@ function closeLightbox() {
       positionXCover();
     }
 
-    // Watch for NMI injecting elements
     const observer = new MutationObserver(function() {
       applyOverrides();
     });
@@ -194,18 +198,17 @@ function closeLightbox() {
 
       timeoutDuration: 12000,
       timeoutCallback: function() {
-        // Keep lightbox open — NMI will show its own timeout message
         console.warn('Collect.js tokenization timed out');
       },
 
-      // ✅ Only fires on SUCCESS — close lightbox and show badge
+      // ✅ Only fires on SUCCESS
       callback: async function(response) {
+        // ── Hide lightbox IMMEDIATELY before anything else ──
+        closeLightbox();
+
         currentToken = response.token;
         cardType     = response.card?.type   || '';
         last4        = response.card?.number || '';
-
-        // Close the lightbox immediately
-        closeLightbox();
 
         // Show success badge
         tokenBadge.classList.add('visible');
@@ -214,17 +217,17 @@ function closeLightbox() {
           last4 ? `····${last4.slice(-4)}` : ''
         ].filter(Boolean).join(' ');
 
-        // Save token to Airtable for Retool to pick up
+        // Save token to Airtable
         await saveTokenToAirtable(currentToken, cardType, last4.slice(-4));
       },
     });
 
-    // Auto-launch lightbox on page load
+    // Auto-launch on page load
     window.addEventListener('load', function() {
       setTimeout(() => CollectJS.startPaymentRequest(), 500);
     });
 
-    // Listen for reset command from Retool
+    // Listen for reset from Retool
     window.addEventListener('message', function(event) {
       const data = event.data;
       if (!data || data.type !== 'NMI_COMMAND') return;
