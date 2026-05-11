@@ -139,13 +139,15 @@
     }
 
     // ── Close the lightbox ────────────────────────────────────────────────────
-    function closeLightbox() {
-      const fade   = document.querySelector('.CollectJSFade');
-      const iframe = document.getElementById('CollectJSIframe');
-      if (fade)   fade.style.display   = 'none';
-      if (iframe) iframe.style.display = 'none';
-      xCover.classList.remove('visible');
-    }
+function closeLightbox() {
+  const fade   = document.querySelector('.CollectJSFade');
+  const iframe = document.getElementById('CollectJSIframe');
+  if (fade)   fade.style.display   = 'none';
+  if (iframe) iframe.style.display = 'none';
+  xCover.classList.remove('visible');
+  // Reload the page to fully clear the lightbox state
+  setTimeout(() => window.location.reload(), 1500);
+}
 
     // ── Position X cover ──────────────────────────────────────────────────────
     function positionXCover() {
