@@ -39,34 +39,40 @@
       return raw.slice(0, 2) + '/' + raw.slice(2);
     }
 
-    async function saveTokenToAirtable(token, brand, last4, exp) {
-      try {
-        const response = await fetch(
-          `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              fields: {
-                'Token':       token,
-                'Card Brand':  brand,
-                'Last4':       last4,
-                'Exp':         exp,
-                'Resident ID': residentId
-              }
-            })
-          }
-        );
-        const data = await response.json();
-        console.log('Token saved:', data.id);
-        return data.id;
-      } catch (err) {
-        console.error('Failed to save token:', err);
+async function saveTokenToAirtable(token, brand, last4, exp) {
+  try {
+    const body = JSON.stringify({
+      fields: {
+        'Token':       token,
+        'Card Brand':  brand,
+        'Last4':       last4,
+        'Exp':         exp,
+        'Resident ID': residentId
       }
-    }
+    });
+    
+    console.log('Saving to Airtable...', body);
+    
+    const response = await fetch(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: body
+      }
+    );
+    
+    const data = await response.json();
+    console.log('Airtable response status:', response.status);
+    console.log('Airtable response:', JSON.stringify(data));
+    return data.id;
+  } catch (err) {
+    console.error('Failed to save token:', err);
+  }
+}
 
     // ── X cover ───────────────────────────────────────────────────────────────
     const xCover = document.createElement('div');
