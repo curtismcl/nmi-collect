@@ -31,10 +31,15 @@
 
     // Read resident info from URL params passed by Retool
     const urlParams    = new URLSearchParams(window.location.search);
-    const residentId   = urlParams.get('residentId')   || '';
-    const residentName = urlParams.get('residentName') || '';
+    const residentId   = urlParams.get('residentId') || '';
 
-    async function saveTokenToAirtable(token, brand, last4) {
+    // Format exp from MMYY to MM/YY
+    function formatExp(raw) {
+      if (!raw || raw.length !== 4) return raw || '';
+      return raw.slice(0, 2) + '/' + raw.slice(2);
+    }
+
+    async function saveTokenToAirtable(token, brand, last4, exp) {
       try {
         const response = await fetch(
           `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`,
@@ -44,14 +49,15 @@
               'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
               'Content-Type': 'application/json'
             },
-       body: JSON.stringify({
-  fields: {
-    'Token':       token,
-    'Card Brand':  brand,
-    'Last4':       last4,
-    'Resident ID': residentId
-  }
-})
+            body: JSON.stringify({
+              fields: {
+                'Token':       token,
+                'Card Brand':  brand,
+                'Last4':       last4,
+                'Exp':         exp,
+                'Resident ID': residentId
+              }
+            })
           }
         );
         const data = await response.json();
@@ -62,7 +68,7 @@
       }
     }
 
-    // X cover
+    // ── X cover ───────────────────────────────────────────────────────────────
     const xCover = document.createElement('div');
     xCover.id = 'nmi-x-cover';
     Object.assign(xCover.style, {
@@ -98,6 +104,7 @@
     const observer = new MutationObserver(() => applyOverrides());
     observer.observe(document.body, { childList: true, subtree: true });
 
+    // ── CollectJS ─────────────────────────────────────────────────────────────
     CollectJS.configure({
       variant:    'lightbox',
       buttonText: 'Validate Card',
@@ -115,15 +122,17 @@
         const token    = response.token;
         const cardType = response.card?.type   || '';
         const last4    = (response.card?.number || '').slice(-4);
+        const exp      = formatExp(response.card?.exp || '');
 
-        // Save to Airtable with resident info
-        await saveTokenToAirtable(token, cardType, last4);
+        // Save to Airtable with resident info and exp
+        await saveTokenToAirtable(token, cardType, last4, exp);
 
         // Redirect to success page
-        window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&residentId=${encodeURIComponent(residentId)}`;
+        window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
       },
     });
 
+    // Auto-launch on page load
     window.addEventListener('load', function() {
       setTimeout(() => CollectJS.startPaymentRequest(), 500);
     });
