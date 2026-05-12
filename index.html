@@ -11,6 +11,25 @@
       background: transparent;
     }
     #launch-btn { display: none !important; }
+
+    #saving-msg {
+      display: none;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #4f46e5;
+      align-items: center;
+      gap: 8px;
+    }
+    #saving-msg.visible { display: flex; }
+
+    .spinner {
+      width: 12px; height: 12px;
+      border: 2px solid #c7d2fe;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 
   <script
@@ -23,15 +42,19 @@
 
 <body>
   <button id="launch-btn">Enter Card Details</button>
+  <div id="saving-msg">
+    <span class="spinner"></span>
+    Securing card...
+  </div>
 
   <script>
     const AIRTABLE_TOKEN = 'patqJqhMwGnyGpH2d.4ab694ddc5355743167d0f18cdbe6a9601b18629826b2f9308ecf4aefe26e728';
     const AIRTABLE_BASE  = 'applW81Cc4MFZVSHu';
     const AIRTABLE_TABLE = 'tbloUPCH3FsPApg2S';
 
-    // Read resident info from URL params passed by Retool
-    const urlParams    = new URLSearchParams(window.location.search);
-    const residentId   = urlParams.get('residentId') || '';
+    // Read resident ID from URL params passed by Retool
+    const urlParams  = new URLSearchParams(window.location.search);
+    const residentId = urlParams.get('residentId') || '';
 
     // Format exp from MMYY to MM/YY
     function formatExp(raw) {
@@ -39,40 +62,36 @@
       return raw.slice(0, 2) + '/' + raw.slice(2);
     }
 
-async function saveTokenToAirtable(token, brand, last4, exp) {
-  try {
-    const body = JSON.stringify({
-      fields: {
-        'Token':       token,
-        'Card Brand':  brand,
-        'Last4':       last4,
-        'Exp':         exp,
-        'Resident ID': residentId
-      }
-    });
-    
-    console.log('Saving to Airtable...', body);
-    
-    const response = await fetch(
-      `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: body
-      }
-    );
-    
-    const data = await response.json();
-    console.log('Airtable response status:', response.status);
-    console.log('Airtable response:', JSON.stringify(data));
-    return data.id;
-  } catch (err) {
-    console.error('Failed to save token:', err);
-  }
-}
+    async function saveTokenToAirtable(token, brand, last4, exp) {
+      const body = JSON.stringify({
+        fields: {
+          'Token':       token,
+          'Card Brand':  brand,
+          'Last4':       last4,
+          'Exp':         exp,
+          'Resident ID': residentId
+        }
+      });
+
+      console.log('Saving to Airtable...', body);
+
+      const response = await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: body
+        }
+      );
+
+      const data = await response.json();
+      console.log('Airtable response status:', response.status);
+      console.log('Airtable response:', JSON.stringify(data));
+      return data.id;
+    }
 
     // ── X cover ───────────────────────────────────────────────────────────────
     const xCover = document.createElement('div');
@@ -130,11 +149,26 @@ async function saveTokenToAirtable(token, brand, last4, exp) {
         const last4    = (response.card?.number || '').slice(-4);
         const exp      = formatExp(response.card?.exp || '');
 
-        // Save to Airtable with resident info and exp
-        await saveTokenToAirtable(token, cardType, last4, exp);
+        // Show saving indicator
+        document.getElementById('saving-msg').classList.add('visible');
 
-        // Redirect to success page
-        window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
+        try {
+          // Wait for Airtable save to complete before redirecting
+          const recordId = await saveTokenToAirtable(token, cardType, last4, exp);
+
+          console.log('Save complete, record:', recordId);
+
+          if (recordId) {
+            // Redirect only after confirmed save
+            window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
+          } else {
+            console.error('Save failed — no record ID returned');
+            document.getElementById('saving-msg').innerHTML = '❌ Failed to save card. Please try again.';
+          }
+        } catch (err) {
+          console.error('Save error:', err);
+          document.getElementById('saving-msg').innerHTML = '❌ Error saving card. Please try again.';
+        }
       },
     });
 
