@@ -80,7 +80,7 @@
 
     document.getElementById('card-summary').textContent =
       [cardType, last4 ? `····${last4}` : ''].filter(Boolean).join(' ');
-
+window.parent.postMessage({ type: 'nmi_token_ready', residentId }, '*');
     // Go back to index preserving resident context
     document.getElementById('revalidate-btn').addEventListener('click', function() {
       window.location.href = `index.html?residentId=${encodeURIComponent(residentId)}`;
