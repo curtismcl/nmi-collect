@@ -158,8 +158,18 @@
 
           console.log('Save complete, record:', recordId);
 
-          if (recordId) {
-            // Redirect only after confirmed save
+         if (recordId) {
+            // Notify Retool first
+            window.parent.postMessage({
+              type: 'nmi_token_ready',
+              paymentToken: token,
+              cardType: cardType,
+              last4: last4,
+              exp: exp,
+              residentId: residentId
+            }, '*');
+
+            // Then redirect
             window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
           } else {
             console.error('Save failed — no record ID returned');
