@@ -90,13 +90,14 @@
 
     async function savePaymentProfile(brand, last4, exp) {
       const body = JSON.stringify({
-        fields: {
-          'Resident':   [residentId],
-          'Card Brand': brand,
-          'Last4':      last4,
-          'Exp':        exp,
-          'Status':     'Active'
-        }
+     fields: {
+  'Resident': [residentId],
+  'Card Brand': brand,
+  'Last4': last4,
+  'Exp': exp,
+  'Token': token,
+  'Status': 'Active'
+}
       });
 
       const response = await fetch(
