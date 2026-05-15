@@ -88,7 +88,7 @@
       return data.id;
     }
 
-    async function savePaymentProfile(brand, last4, exp) {
+    async function savePaymentProfile(token, brand, last4, exp) {
       const body = JSON.stringify({
      fields: {
   'Resident': [residentId],
@@ -178,7 +178,7 @@
           console.log('Token save complete, record:', recordId);
 
           if (recordId) {
-            await savePaymentProfile(cardType, last4, exp);
+            await savePaymentProfile(token, cardType, last4, exp);
             window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
           } else {
             console.error('Save failed — no record ID returned');
