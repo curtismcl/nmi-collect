@@ -88,35 +88,6 @@
       return data.id;
     }
 
-    async function savePaymentProfile(token, brand, last4, exp) {
-      const body = JSON.stringify({
-     fields: {
-  'Resident': [residentId],
-  'Card Brand': brand,
-  'Last4': last4,
-  'Exp': exp,
-  'Token': token,
-  'Status': 'Active'
-}
-      });
-
-      const response = await fetch(
-        `https://api.airtable.com/v0/applW81Cc4MFZVSHu/tblBnCGIL3Zv0fomy`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: body
-        }
-      );
-
-      const data = await response.json();
-      console.log('Payment profile response status:', response.status);
-      console.log('Payment profile response:', JSON.stringify(data));
-    }
-
     const xCover = document.createElement('div');
     xCover.id = 'nmi-x-cover';
     Object.assign(xCover.style, {
@@ -178,7 +149,6 @@
           console.log('Token save complete, record:', recordId);
 
           if (recordId) {
-            await savePaymentProfile(token, cardType, last4, exp);
             window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
           } else {
             console.error('Save failed — no record ID returned');
