@@ -148,7 +148,8 @@
           const recordId = await saveTokenToAirtable(token, cardType, last4, exp);
           console.log('Token save complete, record:', recordId);
 
-         if (recordId) {
+if (recordId) {
+  console.log('Sending postMessage to Retool...');
   window.parent.postMessage({
     type: 'nmi_token_ready',
     paymentToken: token,
