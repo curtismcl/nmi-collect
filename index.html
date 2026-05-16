@@ -88,30 +88,6 @@
       return data.id;
     }
 
-    async function vaultCard(token) {
-      const params = new URLSearchParams({
-        security_key: '2h2ratfCmAq4DHuK4A2h894nBP8tv36p',
-        type: 'validate',
-        amount: '0',
-        payment_token: token,
-        first_name: residentId,
-        last_name: 'Resident',
-        customer_vault: 'add_customer',
-        test_mode: 'enabled'
-      });
-
-      const response = await fetch('https://secure.nmi.com/api/transact.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString()
-      });
-
-      const text = await response.text();
-      console.log('NMI vault response:', text);
-      const result = new URLSearchParams(text);
-      return result.get('customer_vault_id');
-    }
-
     const xCover = document.createElement('div');
     xCover.id = 'nmi-x-cover';
     Object.assign(xCover.style, {
@@ -173,17 +149,6 @@
           console.log('Token save complete, record:', recordId);
 
           if (recordId) {
-            const vaultId = await vaultCard(token);
-            console.log('Vault ID:', vaultId);
-            console.log('Sending postMessage to Retool...');
-            window.parent.postMessage({
-              type: 'nmi_token_ready',
-              paymentToken: token,
-              cardType: cardType,
-              last4: last4,
-              exp: exp,
-              residentId: residentId
-            }, '*');
             window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
           } else {
             console.error('Save failed — no record ID returned');
