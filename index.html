@@ -88,20 +88,6 @@
       return data.id;
     }
 
-    async function triggerVaultWorkflow(token, cardType, last4, exp) {
-      await fetch('https://api.retool.com/v1/workflows/37593cf0-b900-4c62-954b-a3d4f6ce8d28/startTrigger', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentToken: token,
-          residentId: residentId,
-          cardType: cardType,
-          last4: last4,
-          exp: exp
-        })
-      });
-    }
-
     const xCover = document.createElement('div');
     xCover.id = 'nmi-x-cover';
     Object.assign(xCover.style, {
@@ -163,7 +149,6 @@
           console.log('Token save complete, record:', recordId);
 
           if (recordId) {
-            await triggerVaultWorkflow(token, cardType, last4, exp);
             window.location.href = `success.html?cardType=${encodeURIComponent(cardType)}&last4=${encodeURIComponent(last4)}&exp=${encodeURIComponent(exp)}&residentId=${encodeURIComponent(residentId)}`;
           } else {
             console.error('Save failed — no record ID returned');
